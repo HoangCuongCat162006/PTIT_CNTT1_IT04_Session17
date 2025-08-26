@@ -1,96 +1,173 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { v7 as generateId } from "uuid";
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ email?: string; password?: string }>({});
+interface Job {
+  id: number | string;
+  name: string;
+  isCompleted: boolean;
+}
 
-  const validate = () => {
-    const err: { email?: string; password?: string } = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) err.email = "Email không hợp lệ";
-    if (password.length < 6) err.password = "Mật khẩu phải >= 6 ký tự";
-    return err;
+export default function Bai9() {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    document.title = "Quản lý công việc";
+
+    if (inputRef.current) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
+  const [inputValue, setInputValue] = useState<string>("");
+  const [listJob, setListJob] = useState<Job[]>(() => {
+    const listJobLocal = localStorage.getItem("listJob");
+    const listJobLocalParse = (listJobLocal && JSON.parse(listJobLocal)) || [];
+    return listJobLocalParse;
+  });
+
+  const saveData = (updateData: Job[]) => {
+    setListJob(updateData);
+    localStorage.setItem("listJob", JSON.stringify(updateData));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const err = validate();
-    if (Object.keys(err).length > 0) {
-      setError(err);
+  const handleChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(event.target.value);
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const trimmedValue = inputValue.trim();
+
+    if (!trimmedValue) {
+      alert("Tên công việc không được để trống");
       return;
     }
-    setError({});
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      alert("Đăng nhập thành công!");
-    }, 1500);
+
+    const isDuplicate = listJob.some(
+      (job) => job.name.trim().toLowerCase() === trimmedValue.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      alert("Tên công việc đã tồn tại!");
+      return;
+    }
+
+    const newJob: Job = {
+      id: generateId(),
+      name: trimmedValue,
+      isCompleted: false,
+    };
+
+    const listJobClone = [...listJob, newJob];
+    saveData(listJobClone);
+    setInputValue("");
+  };
+
+  const handleDelete = (job: Job) => {
+    const isConfirm = confirm(
+      `Bạn có muốn xóa công việc ${job.name} này không?`
+    );
+    if (isConfirm) {
+      const filterJob = listJob.filter((jobItem: Job) => jobItem.id !== job.id);
+      saveData(filterJob);
+    }
+  };
+
+  const handleChangeStatus = (id: number | string) => {
+    const listJobUpdated = listJob.map((job: Job) => {
+      if (job.id === id) {
+        job.isCompleted = !job.isCompleted;
+      }
+      return job;
+    });
+    saveData(listJobUpdated);
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "50px" }}>
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          width: "350px",
-          padding: "20px",
-          border: "1px solid #ccc",
-          borderRadius: "10px",
-        }}
-      >
-        <h2 style={{ textAlign: "center" }}>Secure Access Login</h2>
-
-        <div style={{ marginBottom: "10px" }}>
-          <label>Email</label>
-          <input
-            type="text"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-          {error.email && <p style={{ color: "red" }}>{error.email}</p>}
+    <>
+      <section className="vh-100 gradient-custom">
+        <div className="container py-5 h-100">
+          <div className="row d-flex justify-content-center align-items-center h-100">
+            <div className="col col-xl-10">
+              <div className="card">
+                <div className="card-body p-5">
+                  <h3 style={{ textAlign: "center", marginBottom: 40 }}>
+                    Danh sách công việc
+                  </h3>
+                  <form
+                    onSubmit={handleSubmit}
+                    className="d-flex justify-content-center align-items-center mb-4"
+                  >
+                    <div className="flex-fill">
+                      <input
+                        ref={inputRef}
+                        onChange={handleChangeInput}
+                        value={inputValue}
+                        type="text"
+                        id="form2"
+                        className="form-control"
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-info ms-2">
+                      Thêm
+                    </button>
+                  </form>
+                  <ul className="nav nav-tabs mb-4 pb-2" id="ex1" role="tablist">
+                    <li className="nav-item" role="presentation">
+                      <a className="nav-link active">Tất cả công việc</a>
+                    </li>
+                  </ul>
+                  <div className="tab-content">
+                    <div className="tab-pane fade show active">
+                      <ul className="list-group mb-0">
+                        {listJob.map((job: Job) => (
+                          <li
+                            key={job.id}
+                            className="list-group-item d-flex align-items-center border-0 mb-2 rounded justify-content-between"
+                            style={{ backgroundColor: "#f4f6f7" }}
+                          >
+                            <div>
+                              <input
+                                className="form-check-input me-2"
+                                type="checkbox"
+                                checked={job.isCompleted}
+                                onChange={() => handleChangeStatus(job.id)}
+                              />
+                              {job.isCompleted ? (
+                                <s>{job.name}</s>
+                              ) : (
+                                <span>{job.name}</span>
+                              )}
+                            </div>
+                            <div>
+                              <a
+                                href="#!"
+                                className="text-info"
+                                title="Sửa công việc"
+                              >
+                                <i className="fas fa-pencil-alt me-3" />
+                              </a>
+                              <a
+                                onClick={() => handleDelete(job)}
+                                href="#!"
+                                className="text-danger"
+                                title="Xóa công việc"
+                              >
+                                <i className="fas fa-trash-alt" />
+                              </a>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div style={{ marginBottom: "10px" }}>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-          {error.password && <p style={{ color: "red" }}>{error.password}</p>}
-        </div>
-
-        <div style={{ marginBottom: "10px" }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={() => setRemember(!remember)}
-            />{" "}
-            Remember me
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "10px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-          }}
-        >
-          {loading ? "Loading..." : "Login"}
-        </button>
-      </form>
-    </div>
+      </section>
+    </>
   );
 }
